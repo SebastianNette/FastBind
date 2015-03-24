@@ -7,7 +7,7 @@ Function.prototype.bind = (function()
     return function( context )
     {
         // count number of parameters
-        var n = arguments.callee.length;
+        var n = this.toString().split(")")[0].split(",").length;
         
         // create function in stack if not exist
         if(fnStack[n] === undefined)
