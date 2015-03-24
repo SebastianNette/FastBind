@@ -2,13 +2,13 @@ Function.prototype.bind = (function()
 {
     // function stack
     var fnStack = [
-        function(fn,ctx) { return function() { fn.call(ctx); } },
-        function(fn,ctx) { return function(a) { fn.call(ctx,a); } },
-        function(fn,ctx) { return function(a,b) { fn.call(ctx,a,b); } },
-        function(fn,ctx) { return function(a,b,c) { fn.call(ctx,a,b,c); } },
-        function(fn,ctx) { return function(a,b,c,d) { fn.call(ctx,a,b,c,d); } },
-        function(fn,ctx) { return function(a,b,c,d,e) { fn.call(ctx,a,b,c,d,e); } },
-        function(fn,ctx) { return function(a,b,c,d,e,f) { fn.call(ctx,a,b,c,d,e,f); } }
+        function (fn,ctx) { return function () { fn.call(ctx); } },
+        function (fn,ctx) { return function (a) { fn.call(ctx,a); } },
+        function (fn,ctx) { return function (a,b) { fn.call(ctx,a,b); } },
+        function (fn,ctx) { return function (a,b,c) { fn.call(ctx,a,b,c); } },
+        function (fn,ctx) { return function (a,b,c,d) { fn.call(ctx,a,b,c,d); } },
+        function (fn,ctx) { return function (a,b,c,d,e) { fn.call(ctx,a,b,c,d,e); } },
+        function (fn,ctx) { return function (a,b,c,d,e,f) { fn.call(ctx,a,b,c,d,e,f); } }
     ];
     
     var regexp = /,/g;
@@ -19,24 +19,24 @@ Function.prototype.bind = (function()
     };
 
     // toString test
-    var test = (function() { try { return countArgs(function(a,b){}) === 2; } catch(e) { return false; } })();
+    var test = (function () { try { return countArgs(function (a,b){}) === 2; } catch(e) { return false; } })();
         
     // original bind
-    var bind = Function.prototype.bind || function (context) {
+    var bind = Function.prototype.bind || function (ctx) {
         var self = this;
         return function () {
             var args = Array.prototype.slice.call(arguments);
-            return self.apply(bind || null, args);
+            return self.apply(ctx || null, args);
         };
     };
     
     // actual bind
-    return function(context)
+    return function (ctx)
     {
         // if toString failed, use regular bind
         if(!test)
         {
-            return bind.call(this, context);
+            return bind.call(this, ctx);
         }
         
         // count number of parameters
@@ -54,10 +54,10 @@ Function.prototype.bind = (function()
             var params = args.join(",");
             
             // takes fn & context as parameters, returns a bound function that is using .call() instead of slicing arguments and calling .apply()
-            fnStack[n] = new Function("return function(fn, context) { return function(" + params + ") { fn.call(context" + (params ? ", " + params : "") + "); }; };")();
+            fnStack[n] = new Function("return function(fn, ctx) { return function(" + params + ") { fn.call(ctx" + (params ? ", " + params : "") + "); }; };")();
         }
         
         // return bound fn
-        return fnStack[n](this, context || null);
+        return fnStack[n](this, ctx || null);
     };
 })();
