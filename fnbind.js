@@ -1,26 +1,7 @@
 Function.prototype.bind = (function()
 {
-    var ua = navigator.userAgent;
-
-    // IE's bind is faster than this bind, so use it instead
-    if(/MSIE (\d+\.\d+);/.test(ua) || !!navigator.userAgent.match(/Trident.*rv[ :]*11\./))
-    {
-        if( Function.prototype.bind )
-        {
-            return Function.prototype.bind;
-        }
-    }
-
     // function stack
-    var fnStack = [
-        function (fn,ctx) { return function () { fn.call(ctx); } },
-        function (fn,ctx) { return function (a) { fn.call(ctx,a); } },
-        function (fn,ctx) { return function (a,b) { fn.call(ctx,a,b); } },
-        function (fn,ctx) { return function (a,b,c) { fn.call(ctx,a,b,c); } },
-        function (fn,ctx) { return function (a,b,c,d) { fn.call(ctx,a,b,c,d); } },
-        function (fn,ctx) { return function (a,b,c,d,e) { fn.call(ctx,a,b,c,d,e); } },
-        function (fn,ctx) { return function (a,b,c,d,e,f) { fn.call(ctx,a,b,c,d,e,f); } }
-    ];
+    var fnStack = [];
     
     var regexp = /,/g;
     var countArgs = function (fn) {
@@ -31,7 +12,7 @@ Function.prototype.bind = (function()
 
     // toString test
     var test = (function () { try { return countArgs(function (a,b){}) === 2; } catch(e) { return false; } })();
-        
+
     // original bind
     var bind = Function.prototype.bind || function (ctx) {
         var self = this;
@@ -44,31 +25,48 @@ Function.prototype.bind = (function()
     // actual bind
     return function (ctx)
     {
+        var m = arguments.length;
+        
+        // no arguments -> useless, return function
+        if(!m) return this;
+        
+        var args;
+        
+        // more than 1 argument -> apply
+        if(m > 1) args = Array.prototype.slice.call(arguments);
+        
         // if toString failed, use regular bind
-        if(!test)
-        {
-            return bind.call(this, ctx);
-        }
+        if(!test) return bind.apply(this, Array.prototype.slice.call(arguments));
         
         // count number of parameters
         var n = countArgs(this);
+        var k = m - 1;
+        
+        // get fn for arguments length
+        fnStack[k] = fnStack[k] || [];
         
         // create function in stack if not exist
-        if(!fnStack[n] || typeof fnStack[n] !== 'function')
-        {
-            var args = [];
-            for(var i = 0; i < n; i++)
+        if(!fnStack[k][n] || typeof fnStack[k][n] !== 'function')
+        {            
+            var _args = "", _params = "";
+            for(var i = n+k; i > 0; i--)
             {
-                args.push("v"+i);
+                if(i <= k) {
+                    _args += ",a" + i;
+                } else {
+                    _params += ",p" + i;
+                }
             }
             
-            var params = args.join(",");
-            
-            // takes fn & context as parameters, returns a bound function that is using .call() instead of slicing arguments and calling .apply()
-            fnStack[n] = new Function("return function(fn, ctx) { return function(" + params + ") { fn.call(ctx" + (params ? ", " + params : "") + "); }; };")();
+            // fn factory...
+            fnStack[k][n] = new Function("return function(f,c"+_args+"){return function("+_params.substring(1)+"){if(arguments.callee.length!==arguments.length){"+(_args?("var a=Array.prototype.slice.call(arguments); a.unshift("+_args.substring(1)+");return f.apply(c,a);"):"return f.apply(c,Array.prototype.slice.call(arguments));")+"}else{return f.call(c"+_args+_params+");}};};")();
         }
-        
+                
         // return bound fn
-        return fnStack[n](this, ctx || null);
+        if(args) {
+            args.unshift(this);
+            return fnStack[k][n].apply(null, args);
+        }
+        return fnStack[k][n](this, ctx || null);
     };
 })();
