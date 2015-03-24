@@ -1,5 +1,16 @@
 Function.prototype.bind = (function()
 {
+    var ua = navigator.userAgent;
+
+    // IE's bind is faster than this bind, so use it instead
+    if(/MSIE (\d+\.\d+);/.test(ua) || !!navigator.userAgent.match(/Trident.*rv[ :]*11\./))
+    {
+        if( Function.prototype.bind )
+        {
+            return Function.prototype.bind;
+        }
+    }
+
     // function stack
     var fnStack = [
         function (fn,ctx) { return function () { fn.call(ctx); } },
