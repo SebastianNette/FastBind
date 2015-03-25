@@ -12,14 +12,20 @@ Function.prototype.bind = (function()
     // toString test
     var test = (function () { try { return countArgs((function (a,b){}).toString()) === 2; } catch(e) { return false; } })();
 
-    // original bind
-    var bind = Function.prototype.bind || function (ctx) {
-        var self = this;
-        return function () {
-            var args = Array.prototype.slice.call(arguments);
-            return self.apply(ctx || null, args);
+    // ua check
+    var ua = navigator ? navigator.userAgent : "";
+
+    // IE's bind is faster than this bind, so use it instead
+    if(!test || /MSIE (\d+\.\d+);/.test(ua) || !!ua.match(/Trident.*rv[ :]*11\./))
+    {
+        return Function.prototype.bind || function (ctx) {
+            var self = this;
+            return function () {
+                var args = Array.prototype.slice.call(arguments);
+                return self.apply(ctx || null, args);
+            };
         };
-    };
+    }
     
     // actual bind
     return function (ctx)
@@ -33,9 +39,6 @@ Function.prototype.bind = (function()
         
         // more than 1 argument -> apply
         if(m > 1) args = Array.prototype.slice.call(arguments);
-        
-        // if toString failed, use regular bind
-        if(!test) return bind.apply(this, Array.prototype.slice.call(arguments));
 
         // fn to string
         var str = this.toString();
