@@ -68,15 +68,14 @@ Function.prototype.bind = (function()
             }
             
             // fn factory...
-            fnStack[callee][k][n] = new Function("return function(b,f,c"+_args+"){return function("+_params.substring(1)+"){"+(callee ? ("if(b && arguments.callee.length!==arguments.length){"+(_args?("var a=Array.prototype.slice.call(arguments);a.unshift("+_args.substring(1)+");return f.apply(c,a);"):"return f.apply(c,Array.prototype.slice.call(arguments));")+"}else{"):"return f.call(c"+_args+_params+");") + (callee?"}":"")+"};};")();
+            fnStack[callee][k][n] = new Function("return function(f,c"+_args+"){return function("+_params.substring(1)+"){"+(callee ? ("if(arguments.callee.length!==arguments.length){"+(_args?("var a=Array.prototype.slice.call(arguments);a.unshift("+_args.substring(1)+");return f.apply(c,a);"):"return f.apply(c,Array.prototype.slice.call(arguments));")+"}else{"):"return f.call(c"+_args+_params+");") + (callee?"}":"")+"};};")();
         }
                 
         // return bound fn
         if(args) {
             args.unshift(this);
-            args.unshift(callee);
             return fnStack[callee][k][n].apply(null, args);
         }
-        return fnStack[callee][k][n](callee, this, ctx || null);
+        return fnStack[callee][k][n](this, ctx || null);
     };
 })();
