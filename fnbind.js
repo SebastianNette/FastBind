@@ -1,5 +1,8 @@
 Function.prototype.bind = (function()
 {
+    // original bind
+    var bind = Function.prototype.bind;
+
     // function stack
     var fnStack = [];
     
@@ -27,7 +30,7 @@ Function.prototype.bind = (function()
     // IE's bind is faster than this bind, so use it instead
     if(!test || /MSIE (\d+\.\d+);/.test(ua) || !!ua.match(/Trident.*rv[ :]*11\./))
     {
-        return Function.prototype.bind || function (ctx)
+        return bind || function (ctx)
         {
             var self = this;
             return function ()
@@ -97,12 +100,12 @@ Function.prototype.bind = (function()
     ];
     
     // actual bind
-    return function()
+    return function ()
     {
         var numArgs = arguments.length;
         
         // no arguments -> useless, return function
-        if(!numArgs) {
+        if( !numArgs ) {
             return this;
         }
 
@@ -111,6 +114,11 @@ Function.prototype.bind = (function()
 
         // if the function has either native code or arguments in it, we will check the callee
         var c = ((str.indexOf("native code") !== -1 || str.indexOf("arguments") !== -1)) ? 1 : 0;
+
+        // yea.. the callee length arguments length comparison takes too long, lets just use native for now
+        if( c && bind ) {
+            return bind.apply(this, arguments);
+        }
         
         // count number of parameters
         var n = countArgs(str);
