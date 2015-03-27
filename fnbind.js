@@ -97,7 +97,7 @@ Function.prototype.bind = (function()
     ];
     
     // actual bind
-    return function (ctx)
+    return function()
     {
         var numArgs = arguments.length;
         
@@ -147,9 +147,6 @@ Function.prototype.bind = (function()
         }
                 
         // return bound fn
-        if(numArgs > 1) {
-            return fnStack[c][k][n].apply(this, arguments);
-        }
-        return fnStack[c][k][n](this, ctx);
+        return fnStack[c][k][n].apply(this, arguments);
     };
 })();
