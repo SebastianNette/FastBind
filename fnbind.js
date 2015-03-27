@@ -4,78 +4,152 @@ Function.prototype.bind = (function()
     var fnStack = [];
     
     var regexp = /,/g;
-    var countArgs = function (str) {
-        str = str.substring(str.indexOf("(")+1, str.indexOf(")"));
+
+    // counts the parameters of the function
+    var countArgs = function (str)
+    {
+        str = str.substring( str.indexOf("(") + 1, str.indexOf(")") );
         return !str ? 0 : (1 + (str.length - str.replace(regexp, '').length));
     };
 
-    // toString test
-    var test = (function () { try { return countArgs((function (a,b){}).toString()) === 2; } catch(e) { return false; } })();
+    // lets ust make sure that this counts the parameters correctly
+    var test = (function () {
+        try {
+            return countArgs((function (a,b){}).toString()) === 2;
+        } catch(e) {
+            return false;
+        }
+    })();
 
-    // ua check
+    // get the userAgent or empty string if in node
     var ua = (typeof module !== 'undefined' && module.exports) ? "" : navigator.userAgent;
 
     // IE's bind is faster than this bind, so use it instead
     if(!test || /MSIE (\d+\.\d+);/.test(ua) || !!ua.match(/Trident.*rv[ :]*11\./))
     {
-        return Function.prototype.bind || function (ctx) {
+        return Function.prototype.bind || function (ctx)
+        {
             var self = this;
-            return function () {
+            return function ()
+            {
                 var args = Array.prototype.slice.call(arguments);
                 return self.apply(ctx || null, args);
             };
         };
     }
+
+    // fn factory
+    var factory = [
+
+        // [0] -> no callee check
+        [
+            // [0][0] -> no callee check, args
+            [
+                "return function(c,$1) {",
+                "   var f = this;",
+                "   return function($3) {",
+                "       return f.call(c,$1$2);",
+                "   };",
+                "};"
+            ].join("\n"),
+
+            // [0][1] -> no callee check, no args
+            [
+                "return function(c) {",
+                "   var f = this;",
+                "   return function($3) {",
+                "       return f.call(c$2);",
+                "   };",
+                "};"
+            ].join("\n")
+        ],
+
+        // [1] -> callee check
+        [
+            // [1][0] -> callee check, args
+            [
+                "return function(c,$1) {",
+                "   var f = this;",
+                "   return function($3) {",
+                "       if(arguments.callee.length !== arguments.length) {",
+                "           var args = Array.prototype.slice.call(arguments);",
+                "               args.unshift($1);",
+                "           return f.apply(c,args);",
+                "       }",
+                "       return f.call(c,$1$2);", 
+                "   };",
+                "};"
+            ].join("\n"),
+
+            // [1][1] -> callee check, no args
+            [
+                "return function(c) {",
+                "   var f = this;",
+                "   return function($3) {",
+                "       if(arguments.callee.length !== arguments.length) {",
+                "           return f.apply(c,arguments);",
+                "       }",
+                "       return f.call(c$2);",
+                "   };",
+                "};"
+            ].join("\n")
+        ]
+    ];
     
     // actual bind
     return function (ctx)
     {
-        var m = arguments.length;
+        var numArgs = arguments.length;
         
         // no arguments -> useless, return function
-        if(!m) return this;
-        
-        var args;
-        
-        // more than 1 argument -> apply
-        if(m > 1) args = Array.prototype.slice.call(arguments);
+        if(!numArgs) {
+            return this;
+        }
 
         // fn to string
         var str = this.toString();
 
-        // more tests
-        var callee = ((str.indexOf("native code") !== -1 || str.indexOf("arguments") !== -1)) ? 1 : 0;
+        // if the function has either native code or arguments in it, we will check the callee
+        var c = ((str.indexOf("native code") !== -1 || str.indexOf("arguments") !== -1)) ? 1 : 0;
         
         // count number of parameters
         var n = countArgs(str);
-        var k = m - 1;
+        var k = numArgs - 1;
         
         // get fn for arguments length
-        fnStack[callee] = fnStack[callee] || [];
-        fnStack[callee][k] = fnStack[callee][k] || [];
+        fnStack[c] = fnStack[c] || [];
+        fnStack[c][k] = fnStack[c][k] || [];
         
         // create function in stack if not exist
-        if(!fnStack[callee][k][n] || typeof fnStack[callee][k][n] !== 'function')
+        if(!fnStack[c][k][n] || typeof fnStack[c][k][n] !== 'function')
         {            
-            var _args = "", _params = "";
+            var args = "", params = "", fn;
             for(var i = n+k; i > 0; i--)
             {
                 if(i <= k) {
-                    _args += ",a" + i;
+                    args += ",a" + i;
                 } else {
-                    _params += ",p" + i;
+                    params += ",p" + i;
                 }
             }
             
             // fn factory...
-            fnStack[callee][k][n] = new Function("return function(f,c"+_args+"){return function("+_params.substring(1)+"){"+(callee ? ("if(arguments.callee.length!==arguments.length){"+(_args?("var a=Array.prototype.slice.call(arguments);a.unshift("+_args.substring(1)+");return f.apply(c,a);"):"return f.apply(c,Array.prototype.slice.call(arguments));")+"}else{"):"return f.call(c"+_args+_params+");") + (callee?"}":"")+"};};")();
+            if( k > 0 ) {
+                fn = factory[c][0];
+                fn = fn.replace(/\$1/g, args.substring(1));
+                fn = fn.replace('$2', params).replace('$3', params.substring(1));
+            } else {
+                fn = factory[c][1];
+                fn = fn.replace('$2', params).replace('$3', params.substring(1));
+            }
+            
+            fnStack[c][k][n] = new Function(fn)();
         }
                 
         // return bound fn
-        if(args) {
-            args.unshift(this);
-            return fnStack[callee][k][n].apply(null, args);
+        if(numArgs > 1) {
+            return fnStack[c][k][n].apply(this, arguments);
         }
-        return fnStack[callee][k][n](this, ctx || null);
+        return fnStack[c][k][n](this, ctx);
     };
 })();
